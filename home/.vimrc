@@ -1,3 +1,10 @@
+set nocompatible            " Do not care about old versions yo
+set tabstop=4 softtabstop=2
+set shiftwidth=4
+set expandtab
+set smartindent
+set nowrap
+
 " enable syntax and plugins (for netrw)
 syntax enable
 filetype plugin on

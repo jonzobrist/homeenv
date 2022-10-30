@@ -2,7 +2,7 @@
 # Author : Jon Zobrist <jon@jonzobrist.com>
 # Homepage : http://www.jonzobrist.com
 # License : BSD http://en.wikipedia.org/wiki/BSD_license
-# Copyright (c) 2022, Jon Zobrist
+# Copyright (c) 2019, Jon Zobrist
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
