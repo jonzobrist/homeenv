@@ -129,9 +129,9 @@ retry() {
 }
 
 # System aliases
-alias sshrm="ssh-keygen -R "
-alias lsort="sort | uniq -c | sort -n"
-alias auxyul="retry ssh ${yul}"
+alias sshrm="ssh-keygen -R " # Use like sshrm hostname / sshrm ip
+alias lsort="sort | uniq -c | sort -n" # Use like | lsort
+#Remap the basics to be a little better
 alias ll='ls -FAlh'
 alias l='ls -FAlh'
 alias lg='ls -FAlh | grep -i '
@@ -148,20 +148,25 @@ pskill() {
 alias p6='ping -c 6 -W 100 '
 alias ra="dig +short -x "
 alias ns="dig +short "
-#alias ds="dig +short "
+#alias ds="dig +short " # Simple alias for "dig + short"
 ds () {
+    # more complex function that looks for a FQDN / hostname
 	DNS_STR=$(echo ${1} | egrep -o '[-.a-zA-Z0-9]+' | egrep '\.' | egrep -vi 'http' | head -n 1)
 	echo ${DNS_STR}
 	dig +short ${DNS_STR}
 }
-alias wa="whois -h whois.arin.net "
+alias wa="whois -h whois.arin.net " # Find owners of IPs, usually used to see if this is an AWS IP or not
+# Aliases for perf analysis with curl
 alias tcurl='curl -w "%{remote_ip} time_namelookup: %{time_namelookup} tcp: %{time_connect} ssl:%{time_appconnect} start_transfer:%{time_starttransfer} total:%{time_total}\n" -sk -o /dev/null'
 alias tcurlc='curl -w "%{remote_ip} time_namelookup: %{time_namelookup} tcp: %{time_connect} ssl:%{time_appconnect} start_transfer:%{time_starttransfer} total:%{time_total}\n" -sk -o /dev/null --cookie ${cookie} '
 alias tcurlo='curl -w "%{remote_ip} time_namelookup: %{time_namelookup} tcp: %{time_connect} ssl:%{time_appconnect} start_transfer:%{time_starttransfer} total:%{time_total}\n" -sk '
 alias tcurloc='curl -w "%{remote_ip} time_namelookup: %{time_namelookup} tcp: %{time_connect} ssl:%{time_appconnect} start_transfer:%{time_starttransfer} total:%{time_total}\n" -sk --cookie ${cookie} '
 alias curlc='curl -skL --cookie ${cookie} '
+# Get IP address from my website, dangfast.com, which runs httpbin and has an /ip function
 alias watip="curl -s -X GET "https://www.dangfast.com/ip" -H  "accept: application/json" | jq -r '.origin'"
 alias watproxyip="curl -s -X GET "http://www.dangfast.com/ip" -H  "accept: application/json" | jq -r '.origin'"
+
+# SSH Aliases
 # Retry ssh as EC2 user! Get it!?
 rse() {
     retry ssh ec2-user@${1}
@@ -174,22 +179,27 @@ rsu() {
 }
 
 # Git aliases
-alias gl='git lol'
+alias gl='git lol' # lol needs to be in your .gitconfig
 alias gbl='git branch --list'
 
 # Dev aliases
-alias ipy="ipython -i ~/helpers.py"
+# Python
+alias ipy="ipython -i ~/bin/helpers.py"
 nosetests () {
     ./runpy -m nose.core "$@" --verbose --nocapture
 }
 
+# Bash
 # Math aliases and functions
 function is_int() { return $(test "$@" -eq "$@" > /dev/null 2>&1); }
 
+# ZSH config start
 autoload -U promptinit
 promptinit
+# Set a default sane path
 declare -x PATH="${HOME}/bin:/usr/local/bin:/usr/bin:/bin:/sbin:/usr/sbin:/usr/local/sbin:${HOME}/.local/bin"
 
+# Function to check for possible paths and add them to the path if they exist
 possible_path_dirs=("/usr/local/app1/bin" "${HOME}/app2/bin")
 for path_dir in ${possible_path_dirs[@]}
  do
@@ -202,28 +212,100 @@ done
 alias quicklinks="cat ${HOME}/notes/quicklinks"
 alias notes="cd ${HOME}/notes"
 alias src="cd ${HOME}/src"
-alias elbdate="date -u +%FT%H:%M:%SZ "
+alias elbdate="date -u +%FT%H:%M:%SZ " #UTC date in common format YYYY-MM-DDTHH:MM:SSZ
+
+# I think this was for fail2ban?
 function get_dropped_hosts_dmesg() {
     for S in $(dmesg | grep DROPPED | awk '{ print $8, "\n", $9 }' | sed -e 's/ //g' | sed -e 's/DST=//' | sed -e 's/SRC=//' | sort | uniq); do echo $(dig +short -x ${S} | sed -e 's/\.$//'); done | sort | uniq
 }
-
 function get_dropped_hosts_kernlog() {
     for S in $(grep DROPPED /var/log/kern.log* | awk '{ print $13, "\n", $14 }' | sed -e 's/ //g' | sed -e 's/DST=//' | sed -e 's/SRC=//' | sort | uniq); do echo $(dig +short -x ${S} | sed -e 's/\.$//'); done | sort | uniq
 }
 
-# I keep my local ssh agent info in this file, and if it's there we should source it
-# I use https://github.com/jonzobrist/Bash-Admin-Scripts/blob/master/sshsetup.sh
-# Which I run on boot like
-# sshsetup
+#########
+# SSH AGENT SECTION
+# 'sshsetup' - a function to setup a local ssh-agent, preserve its info for inclusion in future shell
+# This lets me protect my ssh keys with encryption and have easy working ssh with minimal effort
+# This keeps the local ssh agent info in a file, and if it's there we should source it
+# I used to use https://github.com/jonzobrist/Bash-Admin-Scripts/blob/master/sshsetup.sh
+# Usage: sshsetup; source ~/.ssh/myagent; ssh-add
+# Put in your rc file
+# source ~/.ssh/myagent
+
+check_create_file() {
+    # This function was written for managing ssh agent file
+    # but it is generic if you pass in an arg it'll create it and chmod it
+    MY_FILE=${1:-${HOME}/.ssh/myagent}
+    if [ ! -f ${MY_FILE} ]
+     then
+        touch ${MY_FILE}
+    fi
+    chmod og-rwx ${MY_FILE}
+    return $?
+}
+
+check_pid() {
+    # This was made for ssh pid, but it's a generic function
+    # so watch out for default being check ssh agent pid if you don't pass in a PID
+    # Test / usage
+    # zob@sid ~ ❯❯❯ for PID in 2343433 ${SSH_AGENT_PID}; do echo -n "Checking PID ${PID} at $(date): "; if check_pid ${PID}; then echo "Jes! ${PID} is running"; else echo "not running"; fi; done
+    PID=${1:-${SSH_AGENT_PID}}
+    if [ ! -z ${PID} ] && is_int ${PID}
+     then
+        DEBUG "PID: ${PID}"
+        if ps -p ${PID} > /dev/null
+         then
+            DEBUG "${PID} is running!: ps -p ${PID}"
+            DEBUG "$(ps -p ${PID})"
+            return 0
+        else
+            DEBUG "abort!"
+            return 1
+            # kill -INT $$
+        fi
+    fi
+}
+
+sshsetup() {
+    # I assume users have put 'source ~/.ssh/myagent' into their shell rc
+    # So, we are just checking if the PID is in our env, and then if it's running
+    # If not running, continue, if running abort
+    check_create_file
+    if check_pid ${SSH_AGENT_PID}
+     then
+        echo "SSH agent running at $(date), keys:"
+        ssh-add -l
+        DEBUG "SSH_AGENT_PID: ${SSH_AGENT_PID}"
+        DEBUG "ps -p ${SSH_AGENT_PID}"
+        return 0
+    else
+        echo "SSH agent not running, starting a new one at $(date)"
+        DEBUG "SSH_AGENT_PID: ${SSH_AGENT_PID}"
+        DEBUG "(ps -p ${SSH_AGENT_PID})"
+        ssh-agent | grep -v 'echo' | tee ${MY_AGENT_FILE}
+        DEBUG "MY_AGENT_FILE: $(/bin/ls -l ${MY_AGENT_FILE})"
+        DEBUG "Contents of agent file: $(cat ${MY_AGENT_FILE})"
+        source ${MY_AGENT_FILE}
+        if check_pid ${SSH_AGENT_PID}
+         then
+            echo "Success, agent PID ${SSH_AGENT_PID}"
+            return 0
+        else
+            echo "Failed, check logs or rerun with DEBUG=1"
+            DEBUG "SSH_AGENT_PID: ${SSH_AGENT_PID}"
+            DEBUG "$(ps -p ${SSH_AGENT_PID})"
+            return 1
+        fi
+    fi
+}
 # source ~/.ssh/myagent
 # ssh-add
 if [ -f "${HOME}/.ssh/myagent" ]
 then
     source ${HOME}/.ssh/myagent
 fi
-
-# Keep the HTTP address for my S3 bucket handy
-declare -x ZS3="http://mybucket.s3-website-us-east-1.amazonaws.com"
+# END SSH AGENT SECTION
+#########
 
 # Common Iterables
 UPPER="A B C D E F G H I J K L M N O P Q R S T U V W X Y Z"
@@ -267,17 +349,19 @@ function tt() {
         mkdir -p ${TD}
     fi
     ENV_FILE="${TD}/env.sh"
-    if [ ! -f ${ENV_FILE} ]
+    if check_create_file ${ENV_FILE}
      then
+        DEBUG "Adding TT to env.sh for ${TT}"
         echo "declare -x TT=\"${TT}\"" > ${ENV_FILE}
     fi
     if [ ! -x ${ENV_FILE} ]
      then
+        DEBUG "env.sh wasn't executable, fixed"
         chmod uog+x ${ENV_FILE}
     fi
     DEBUG "Changing dir to ~/${TD}. TT=${TT}"
     cd ${TD}
-    . ${ENV_FILE}
+    source ${ENV_FILE}
 }
 
 # I frequently use the pattern of setting F to the current file
@@ -369,6 +453,12 @@ function get_ubuntu_ami() {
   fi
 }
 
+######
+# S3 bucket setup and archiving
+# Keep the HTTP address for my S3 bucket handy
+declare -x ZS3="http://mybucket.s3-website-us-east-1.amazonaws.com"
+# Keep the name of S3 bucket handy
+declare -x S3="mybucket" # Obviously you should change this
 S3_BACKUP_BUCKET="my-s3-bucket" # Obviously you should change this
 function ttup() {
     # Given a work ticket (TT) you're working on, uploading to S3 bucket ${S3_BACKUP_BUCKET}
@@ -377,10 +467,7 @@ function ttup() {
     # Useful if you want to work on a ticket in multiple places
     # or share data from a ticket with others
     # Dont' forget to enable encryption on the bucket!
-    if [ ! "${TD}" ]
-       then
-        TD="${PWD##*/}"
-    fi
+    TD=${${TD}:-${PWD##*/}}
     DEBUG "Backing up tt dir ${TT} at $(date)" | tee -a ~/tt-backup-$(date +%F).log
     sleep 1.5
     aws s3 sync ${TD} s3://${S3_BACKUP_BUCKET}/${TT}
@@ -420,13 +507,14 @@ function pt() {
         rsync -avz ${TD} ${S}:${TD}
     fi
 }
+######
 
 # I keep a list of regions in a local file
 # This enables me to iterate easily over all AWS regions without calling the describe-regions API
 update_ec2_regions() {
 	MY_TMP_FILE=$(mktemp)
 	aws ec2 describe-regions |grep 'RegionName' | awk -F'"' '{ print $4 }' | tee ${MY_TMP_FILE}
-	OC=$(cat ~/regions-ec2 | wc -l | sed -e 's/ //g')
+	OC=$(cat ~/etc/regions-ec2 | wc -l | sed -e 's/ //g')
 	NC=$(cat ${MY_TMP_FILE} | wc -l | sed -e 's/ //g')
 	if (( ${NC} >= ${OC}))
 	 then

@@ -76,9 +76,9 @@ colorscheme gruvbox
 " AirlineTheme solarized
 " let g:airline_solarized_bg='dark'
 " let g:airline_theme='solarized'
-let g:airline_theme='badwolf'
-" let g:airline_theme='solarized'
-" let g:airline_solarized_bg='dark'
+" let g:airline_theme='badwolf'
+let g:airline_theme='solarized'
+let g:airline_solarized_bg='dark'
 
 " Remaps things into functions, start with a space on the ex: line?
 let mapleader = " "
@@ -109,10 +109,8 @@ set incsearch               " Makes search act like search in modern browsers
 " coding things
 set showmatch               " show matching brackets when text indicator is over them
 
-
 set spelllang=en_us
 set spell
-
 
 " From YouTube https://www.youtube.com/watch?v=XA2WjJbmmoM
 " https://github.com/changemewtf/no_plugins
