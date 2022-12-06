@@ -101,6 +101,13 @@ aws_env() {
     echo "OUTPUT=${OUTPUT}"
 }
 
+aws_all_regions() {
+    check_aws_env
+    # This is an iterator to use in for x in (); do
+    DEBUG "aws --region ${REGION} --profile ${PROFILE} ec2 describe-regions --query \"Regions[].RegionName\"" --output text
+    aws --region ${REGION} --profile ${PROFILE} ec2 describe-regions --query "Regions[].RegionName" --output text
+}
+
 alb_from_arn() {
     ALB_ARN=${ALB_ARN:-${1}}
     ALB=${ALB_ARN#*loadbalancer/}
@@ -216,7 +223,7 @@ find_unused_elbs_in_region() {
 }
 
 
-# # Startup check for input, give usage if none
+# Startup check for input, give usage if none
 if [ ! -z ${1} ]
  then
     REGION=${1}
@@ -228,7 +235,7 @@ if [ ! -z ${1} ]
             find_unused_elbs_in_region ${REGION}
             ;;
         all)
-            for region in $(get_regions)
+            for region in $(aws_all_regions)
             do
                 find_unused_elbs_in_region ${region} &
                 sleep 15
