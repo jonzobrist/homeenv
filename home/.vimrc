@@ -64,6 +64,7 @@ call plug#begin('~/.vim/plugged')
 call plug#end()
 
 colorscheme gruvbox
+set background=dark
 " none isn't a color? maybe needs NeoVim?
 " highlight Normal guibg=none
 
